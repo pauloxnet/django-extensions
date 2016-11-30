@@ -312,7 +312,7 @@ class ModelGraph(object):
         if isinstance(field, OneToOneField):
             newmodel['relations'].append(self.add_relation(field, newmodel, '[arrowhead=none, arrowtail=none, dir=both]'))
         elif isinstance(field, ForeignKey):
-            newmodel['relations'].append(self.add_relation(field, newmodel, '[arrowhead=none, arrowtail=dot, dir=both]'))
+            newmodel['relations'].append(self.add_relation(field, newmodel, '[arrowhead=none, arrowtail=diamond, dir=both]'))
         return newmodel
 
     def process_local_many_to_many(self, field, model):
@@ -321,7 +321,7 @@ class ModelGraph(object):
             return newmodel
         if isinstance(field, ManyToManyField):
             if hasattr(field.rel.through, '_meta') and field.rel.through._meta.auto_created:
-                newmodel['relations'].append(self.add_relation(field, newmodel, '[arrowhead=dot arrowtail=dot, dir=both]'))
+                newmodel['relations'].append(self.add_relation(field, newmodel, '[arrowhead=none arrowtail=none, dir=both]'))
         elif isinstance(field, GenericRelation):
             newmodel['relations'].append(self.add_relation(field, newmodel, mark_safe('[style="dotted", arrowhead=normal, arrowtail=normal, dir=both]')))
         return newmodel

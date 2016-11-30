@@ -10,7 +10,9 @@
   node [{% block node_options %}
     fontname = "Helvetica"
     fontsize = 8
-    shape = "plaintext"
+    shape = "box"
+    style = filled
+    fillcolor = SkyBlue2
   {% endblock %}]
 
   edge [{% block edge_options %}
