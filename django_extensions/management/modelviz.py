@@ -174,9 +174,13 @@ class ModelGraph(object):
         return abstract_models
 
     def get_app_context(self, app):
+        if self.verbose_names and app.verbose_name:
+            app_name = app.verbose_name
+        else:
+            app_name = app.name
         return Context({
             'name': '"%s"' % app.name,
-            'app_name': "%s" % app.name,
+            'app_name': "%s" % app_name,
             'cluster_app_name': "cluster_%s" % app.name.replace(".", "_"),
             'models': []
         })
