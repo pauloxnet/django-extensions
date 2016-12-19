@@ -20,7 +20,6 @@ from django.db.models.fields.related import (
 from django.contrib.contenttypes.fields import GenericRelation
 from django.template import Context, Template, loader
 from django.utils.encoding import force_bytes
-from django.utils.safestring import mark_safe
 from django.utils.translation import activate as activate_language
 
 
@@ -66,8 +65,8 @@ class ModelGraph(object):
         self.use_subgraph = kwargs.get('group_models', False)
         self.verbose_names = kwargs.get('verbose_names', False)
         self.inheritance = kwargs.get('inheritance', True)
-        self.relations_as_fields = kwargs.get("relations_as_fields", True)
-        self.sort_fields = kwargs.get("sort_fields", True)
+        self.relations_as_fields = kwargs.get('relations_as_fields', True)
+        self.sort_fields = kwargs.get('sort_fields', True)
         self.language = kwargs.get('language', None)
         if self.language is not None:
             activate_language(self.language)
@@ -101,6 +100,7 @@ class ModelGraph(object):
             'created_at': now.strftime("%Y-%m-%d %H:%M"),
             'cli_options': self.cli_options,
             'disable_fields': self.disable_fields,
+            'relations_as_fields': self.relations_as_fields,
             'use_subgraph': self.use_subgraph,
             'graphs': self.graphs,
         }
@@ -138,7 +138,7 @@ class ModelGraph(object):
             label = field.name
 
         # show related field name
-        if hasattr(field, 'related_query_name'):
+        if hasattr(field, 'related_query_name') and not field.related_query_name().endswith('+'):
             related_query_name = field.related_query_name()
             if self.verbose_names and related_query_name.islower():
                 related_query_name = related_query_name.replace('_', ' ').capitalize()
@@ -190,7 +190,7 @@ class ModelGraph(object):
             attributes = [field for field in appmodel._meta.local_fields]
         else:
             # Find all the 'real' attributes. Relations are depicted as graph edges instead of attributes
-            attributes = [field for field in attributes if not
+            attributes = [field for field in appmodel._meta.local_fields if not
                           isinstance(field, RelatedField)]
         return attributes
 
@@ -313,21 +313,46 @@ class ModelGraph(object):
                 field in abstract_fields or  # excluding fields inherited from abstract classes. they too show as local_fields
                 self.skip_field(field)):
             return newmodel
-        if isinstance(field, OneToOneField):
-            newmodel['relations'].append(self.add_relation(field, newmodel, '[arrowhead=none, arrowtail=none, dir=both]'))
-        elif isinstance(field, ForeignKey):
-            newmodel['relations'].append(self.add_relation(field, newmodel, '[arrowhead=none, arrowtail=diamond, dir=both]'))
+        if isinstance(field, OneToOneField) or isinstance(field, ForeignKey):
+            arrowtail = 'none'
+            arrowhead = 'open' if field.related_query_name().endswith('+') else 'none'
+            dir = 'both'
+            headlabel = ''
+            taillabel = ''
+            style = 'solid'
+            if isinstance(field, OneToOneField):
+                taillabel = '0..1  '
+                headlabel = '0  ' if field.null else '1  '
+            elif isinstance(field, ForeignKey):
+                taillabel = '0..*  '
+                headlabel = '0..1  ' if field.null else '1  '
+            extras = '[arrowhead={}, arrowtail={}, dir={}, headlabel="{}", taillabel="{}", style="{}"]'.format(
+                arrowhead, arrowtail, dir, headlabel, taillabel, style
+            )
+            newmodel['relations'].append(self.add_relation(field, newmodel, extras))
         return newmodel
 
     def process_local_many_to_many(self, field, model):
         newmodel = model.copy()
         if self.skip_field(field):
             return newmodel
-        if isinstance(field, ManyToManyField):
-            if hasattr(field.rel.through, '_meta') and field.rel.through._meta.auto_created:
-                newmodel['relations'].append(self.add_relation(field, newmodel, '[arrowhead=none arrowtail=none, dir=both]'))
-        elif isinstance(field, GenericRelation):
-            newmodel['relations'].append(self.add_relation(field, newmodel, mark_safe('[style="dotted", arrowhead=normal, arrowtail=normal, dir=both]')))
+        if isinstance(field, ManyToManyField) or isinstance(field, GenericRelation):
+            arrowtail = 'none'
+            arrowhead = 'open' if field.related_query_name().endswith('+') else 'none'
+            dir = 'both'
+            headlabel = ''
+            taillabel = ''
+            style = 'solid'
+            if isinstance(field, ManyToManyField):
+                if hasattr(field.rel.through, '_meta') and field.rel.through._meta.auto_created:
+                    taillabel = '0..*  '
+                    headlabel = '0..*  ' if field.blank else '1..*  '
+            elif isinstance(field, GenericRelation):
+                style = 'dotted'
+            extras = '[arrowhead={}, arrowtail={}, dir={}, headlabel="{}", taillabel="{}", style="{}"]'.format(
+                arrowhead, arrowtail, dir, headlabel, taillabel, style
+            )
+            newmodel['relations'].append(self.add_relation(field, newmodel, extras))
         return newmodel
 
     def process_parent(self, parent, appmodel, model):
