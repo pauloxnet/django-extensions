@@ -19,12 +19,7 @@ from django.db.models.fields.related import (
 )
 from django.contrib.contenttypes.fields import GenericRelation
 from django.template import Context, Template, loader
-<<<<<<< HEAD
 from django.utils.encoding import force_bytes, force_str
-from django.utils.safestring import mark_safe
-=======
-from django.utils.encoding import force_bytes
->>>>>>> 8f79055c6e486175b8f408d9525fee734eabe06b
 from django.utils.translation import activate as activate_language
 
 
