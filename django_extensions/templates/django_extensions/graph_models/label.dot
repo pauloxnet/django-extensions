@@ -1,16 +1,8 @@
 {% load indent_text %}{% if use_subgraph %}  subgraph {{ graph.cluster_app_name }} {
-    label=<
-          {{ graph.app_name }}
-          >
+    label=<{{ graph.app_name }}>
     color=SkyBlue2
     style="rounded"{% endif %}
-{% indentby 2 if use_subgraph %}{% for model in graph.models %}
-  {{ model.app_name }}_{{ model.name }} [label=<
-    {{ model.label }}{% if model.abstracts %} &lt;{{ model.abstracts|join:"," }}&gt;{% endif %}
-  {% if not disable_fields %}{% for field in model.fields %}
-    {{ field.label }}
-    {{ field.type }}
-  {% endfor %}{% endif %}
-    >]
-{% endfor %}{% endindentby %}
-{% if use_subgraph %}  }{% endif %}
+{% indentby 2 if use_subgraph %}{% for model in graph.models %}  {{ model.app_name }}_{{ model.name }} [label="{
+    {{ model.label }}|{% if not disable_fields %}{% for field in model.fields %}+ {{ field.label }}: {{ field.type }}\l{% endfor %}{% endif %}
+  }"]
+{% endfor %}{% endindentby %}{% if use_subgraph %}  }{% endif %}
