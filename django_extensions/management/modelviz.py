@@ -19,7 +19,7 @@ from django.db.models.fields.related import (
 )
 from django.contrib.contenttypes.fields import GenericRelation
 from django.template import Context, Template, loader
-from django.utils.encoding import force_bytes
+from django.utils.encoding import force_bytes, force_str
 from django.utils.safestring import mark_safe
 from django.utils.translation import activate as activate_language
 
@@ -92,18 +92,24 @@ class ModelGraph(object):
         for graph in self.graphs:
             for model in graph['models']:
                 for relation in model['relations']:
-                    if relation['target'] in nodes:
-                        relation['needs_node'] = False
+                    if relation is not None:
+                        if relation['target'] in nodes:
+                            relation['needs_node'] = False
 
-    def get_graph_data(self):
+    def get_graph_data(self, as_json=False):
         now = datetime.datetime.now()
         graph_data = {
             'created_at': now.strftime("%Y-%m-%d %H:%M"),
             'cli_options': self.cli_options,
             'disable_fields': self.disable_fields,
             'use_subgraph': self.use_subgraph,
-            'graphs': self.graphs,
         }
+
+        if as_json:
+            graph_data['graphs'] = [context.flatten() for context in self.graphs]
+        else:
+            graph_data['graphs'] = self.graphs
+
         return graph_data
 
     def add_attributes(self, field, abstract_fields):
@@ -116,7 +122,8 @@ class ModelGraph(object):
 
         t = type(field).__name__
         if isinstance(field, (OneToOneField, ForeignKey)):
-            t += " ({0})".format(field.rel.field_name)
+            remote_field = field.remote_field if hasattr(field, 'remote_field') else field.rel  # Remove me after Django 1.8 is unsupported
+            t += " ({0})".format(remote_field.field_name)
         # TODO: ManyToManyField, GenericRelation
 
         return {
@@ -142,21 +149,23 @@ class ModelGraph(object):
             related_query_name = field.related_query_name()
             if self.verbose_names and related_query_name.islower():
                 related_query_name = related_query_name.replace('_', ' ').capitalize()
-            label = '{} ({})'.format(label, force_bytes(related_query_name))
+            label = '{} ({})'.format(label, force_str(related_query_name))
 
         # handle self-relationships and lazy-relationships
-        if isinstance(field.rel.to, six.string_types):
-            if field.rel.to == 'self':
+        remote_field = field.remote_field if hasattr(field, 'remote_field') else field.rel  # Remove me after Django 1.8 is unsupported
+        remote_field_model = remote_field.model if hasattr(remote_field, 'model') else remote_field.to  # Remove me after Django 1.8 is unsupported
+        if isinstance(remote_field_model, six.string_types):
+            if remote_field_model == 'self':
                 target_model = field.model
             else:
-                if '.' in field.rel.to:
-                    app_label, model_name = field.rel.to.split('.', 1)
+                if '.' in remote_field_model:
+                    app_label, model_name = remote_field_model.split('.', 1)
                 else:
                     app_label = field.model._meta.app_label
-                    model_name = field.rel.to
+                    model_name = remote_field_model
                 target_model = apps.get_model(app_label, model_name)
         else:
-            target_model = field.rel.to
+            target_model = remote_field_model
 
         _rel = self.get_relation_context(target_model, field, label, extras)
 
@@ -186,7 +195,7 @@ class ModelGraph(object):
             attributes = [field for field in appmodel._meta.local_fields]
         else:
             # Find all the 'real' attributes. Relations are depicted as graph edges instead of attributes
-            attributes = [field for field in attributes if not
+            attributes = [field for field in appmodel._meta.local_fields if not
                           isinstance(field, RelatedField)]
         return attributes
 
@@ -320,8 +329,9 @@ class ModelGraph(object):
         if self.skip_field(field):
             return newmodel
         if isinstance(field, ManyToManyField):
-            if hasattr(field.rel.through, '_meta') and field.rel.through._meta.auto_created:
-                newmodel['relations'].append(self.add_relation(field, newmodel, '[arrowhead=none arrowtail=none, dir=both]'))
+            remote_field = field.remote_field if hasattr(field, 'remote_field') else field.rel  # Remove me after Django 1.8 is unsupported
+            if hasattr(remote_field.through, '_meta') and remote_field.through._meta.auto_created:
+                newmodel['relations'].append(self.add_relation(field, newmodel, '[arrowhead=dot arrowtail=dot, dir=both]'))
         elif isinstance(field, GenericRelation):
             newmodel['relations'].append(self.add_relation(field, newmodel, mark_safe('[style="dotted", arrowhead=normal, arrowtail=normal, dir=both]')))
         return newmodel

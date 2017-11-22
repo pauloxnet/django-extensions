@@ -20,7 +20,7 @@ try:
 
         def initialize_options(self):
             TestCommand.initialize_options(self)
-            self.pytest_args = []
+            self.pytest_args = 'tests django_extensions --ds=tests.testapp.settings --cov=django_extensions --cov-report html --cov-report term'
 
         def finalize_options(self):
             TestCommand.finalize_options(self)
@@ -28,11 +28,10 @@ try:
             self.test_suite = True
 
         def run_tests(self):
+            import shlex
             import pytest
-
-            errno = pytest.main(self.pytest_args)
+            errno = pytest.main(shlex.split(self.pytest_args))
             sys.exit(errno)
-
 except ImportError:
     PyTest = None
 
@@ -128,7 +127,7 @@ additions for Django projects. See the project page for more information:
     packages=packages,
     cmdclass=cmdclasses,
     package_data=package_data,
-    install_requires=['six>=1.2'],
+    install_requires=['six>=1.2', 'typing'],
     tests_require=[
         'Django',
         'shortuuid',
@@ -138,6 +137,7 @@ additions for Django projects. See the project page for more information:
         'pytest-cov',
         'tox',
         'mock',
+        'vobject'
     ],
     classifiers=[
         'Development Status :: 5 - Production/Stable',
@@ -151,7 +151,12 @@ additions for Django projects. See the project page for more information:
         'Operating System :: OS Independent',
         'Programming Language :: Python',
         'Programming Language :: Python :: 2',
+        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: Implementation :: CPython',
         'Programming Language :: Python :: Implementation :: PyPy',
         'Topic :: Utilities',
     ],

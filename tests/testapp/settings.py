@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 
 SECRET_KEY = 'dummy'
 
@@ -7,6 +8,7 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.admin',
     'django.contrib.sessions',
+    'tests.collisions',
     'tests.testapp',
     'tests.testapp_with_no_models_file',
     'django_extensions',
@@ -51,3 +53,5 @@ TEMPLATES = [
         },
     },
 ]
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
